@@ -31,7 +31,7 @@ ENV TRIVY_CACHE_DIR=/cache HOME=/tmp
 # on a run with network; the ClamAV database is refreshed by the weekly rebuild.
 RUN trivy image --download-db-only --cache-dir /cache >/dev/null 2>&1 && chmod -R a+rwX /cache
 RUN freshclam --datadir=/var/lib/clamav --quiet && chmod -R a+rX /var/lib/clamav \
- && ls /var/lib/clamav/*.cvd /var/lib/clamav/*.cld >/dev/null
+ && ls /var/lib/clamav/main.c?d /var/lib/clamav/daily.c?d >/dev/null
 # Non-root by default. Run with --user "$(id -u):$(id -g)" when /reports is a mounted host folder,
 # so the reports belong to you; every folder the gate writes to accepts any user.
 USER gate
