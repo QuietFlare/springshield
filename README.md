@@ -1,11 +1,12 @@
 # springshield
 
-The release gate for Spring Boot images. It runs on any container image; Boot is where it knows the most.
-
 [![release](https://img.shields.io/github/v/release/QuietFlare/springshield?label=release)](https://github.com/QuietFlare/springshield/releases/latest)
 [![image](https://img.shields.io/badge/ghcr.io-quietflare%2Fspringshield-blue)](https://github.com/QuietFlare/springshield/pkgs/container/springshield)
 [![ci](https://github.com/QuietFlare/springshield/actions/workflows/ci.yml/badge.svg)](https://github.com/QuietFlare/springshield/actions/workflows/ci.yml)
 [![licence](https://img.shields.io/github/license/QuietFlare/springshield)](LICENSE)
+
+The release gate for Spring Boot images. It runs on any container image; Boot is where it knows the most.
+
 
 One command, the same on a laptop and in CI, on the image you just built and have not pushed:
 
