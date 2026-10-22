@@ -28,14 +28,14 @@ jobs:
       - name: Expect SHIP on a current minimal image
         run: |
           mkdir -p reports/ship
-          docker run --rm -v "$PWD/reports/ship:/reports" springshield:test alpine:3.21
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/reports/ship:/reports" springshield:test alpine:3.21
           cat reports/ship/vulnerabilities.txt | tail -5
 
       - name: Expect BLOCK on an old image with fixable findings
         run: |
           mkdir -p reports/block
           set +e
-          docker run --rm -v "$PWD/reports/block:/reports" springshield:test nginx:1.18
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/reports/block:/reports" springshield:test nginx:1.18
           code=$?
           set -e
           [ "$code" -eq 1 ] || { echo "expected exit 1 (BLOCK), got $code"; exit 1; }
@@ -44,7 +44,7 @@ jobs:
         run: |
           mkdir -p reports/broken
           set +e
-          docker run --rm -v "$PWD/reports/broken:/reports" springshield:test ghcr.io/quietflare/does-not-exist:0
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/reports/broken:/reports" springshield:test ghcr.io/quietflare/does-not-exist:0
           code=$?
           set -e
           [ "$code" -eq 2 ] || { echo "expected exit 2 (BROKEN), got $code"; exit 1; }

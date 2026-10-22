@@ -2,13 +2,21 @@
 
 The release gate for Spring Boot images. It runs on any container image; Boot is where it knows the most.
 
-One command, the same on a laptop and in CI:
+One command, the same on a laptop and in CI, on the image you just built and have not pushed:
 
 ```bash
-docker run --rm -v "$PWD/reports:/reports" ghcr.io/quietflare/springshield:1 ghcr.io/you/app:1.4.0
+docker save app:1.4.0 -o image.tar
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/image.tar:/image.tar:ro" -v "$PWD/reports:/reports" \
+  ghcr.io/quietflare/springshield:1 /image.tar
 ```
 
-It runs every check, writes one report per check into `reports/`, and prints one verdict line. The exit code is zero only when the image may ship.
+It runs every check, writes one report per check into `reports/`, and prints one verdict line. The exit code is zero only when the image may ship; the push comes after, never before.
+
+The same command with a registry reference instead of a tar audits an image that is already out there, yours from last month or a vendor's:
+
+```bash
+docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/reports:/reports" ghcr.io/quietflare/springshield:1 ghcr.io/you/app:1.4.0
+```
 
 ## The rule
 

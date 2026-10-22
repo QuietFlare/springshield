@@ -32,7 +32,7 @@ if [ -f "$TARGET" ]; then INPUT=(--input "$TARGET"); else INPUT=("$TARGET"); fi
 # The policy, read once.
 SEVERITY=$(yq -r '.block.severity | join(",")' "$POLICY")
 IGNORE_UNFIXED=$(yq -r '.block.ignore_unfixed // true' "$POLICY")
-ACCEPTED_FILE="$REPORTS/.accepted"
+ACCEPTED_FILE="$(mktemp)"
 yq -r '.accepted[]? | .id' "$POLICY" > "$ACCEPTED_FILE"
 today=$(date -u +%F)
 # An accepted finding past its date is accepted no longer.

@@ -11,14 +11,16 @@ FROM aquasec/trivy:0.70.0 AS trivy
 FROM alpine:3.21
 RUN apk add --no-cache bash jq yq ca-certificates \
  && adduser -S -u 10001 -h /home/gate gate \
- && mkdir -p /reports /cache && chown -R gate /reports /cache
+ && mkdir -p /reports /cache /tmp && chmod 1777 /reports /cache /tmp
 COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
 COPY gate.sh /usr/local/bin/gate
 COPY gate.yaml /etc/springshield/gate.yaml
 RUN chmod +x /usr/local/bin/gate
-USER gate
-ENV TRIVY_CACHE_DIR=/cache
+ENV TRIVY_CACHE_DIR=/cache HOME=/tmp
 # The database at build time; a run with network refreshes it, a run without still has this one.
-RUN trivy image --download-db-only --cache-dir /cache >/dev/null 2>&1 || true
+RUN trivy image --download-db-only --cache-dir /cache >/dev/null 2>&1 || true; chmod -R a+rwX /cache
+# Non-root by default. Run with --user "$(id -u):$(id -g)" when /reports is a mounted host folder,
+# so the reports belong to you; every folder the gate writes to accepts any user.
+USER gate
 VOLUME ["/reports"]
 ENTRYPOINT ["gate"]

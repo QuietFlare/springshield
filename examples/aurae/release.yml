@@ -35,7 +35,7 @@
         # The image is handed over as a tar, so the gate needs no registry access and no Docker socket.
         run: |
           mkdir -p reports
-          docker run --rm \
+          docker run --rm --user "$(id -u):$(id -g)" \
             -v /tmp/image.tar:/image.tar:ro \
             -v "$PWD/api/Dockerfile:/Dockerfile:ro" \
             -v "$PWD/api/gate.yaml:/gate.yaml:ro" \
