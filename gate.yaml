@@ -1,0 +1,16 @@
+# The default policy. Copy it beside your Dockerfile and change it there; pass it with --policy.
+# Every accepted finding needs a reason and a date. The date is when the acceptance expires and
+# the finding blocks again, so nothing is accepted forever by accident.
+version: 1
+
+block:
+  # Findings at these severities block the image.
+  severity: [HIGH, CRITICAL]
+  # A finding with no fix available is reported, not blocked: there is nothing to do about it yet.
+  ignore_unfixed: true
+
+# Findings judged not to apply, with the reason written down. "Not affected, and why."
+accepted: []
+#  - id: CVE-2026-111943
+#    reason: helper binary runs once at container start and opens no socket
+#    until: 2026-12-31

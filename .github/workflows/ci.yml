@@ -1,0 +1,73 @@
+# Build the gate and prove it judges correctly: SHIP on a clean image, BLOCK on an old one with
+# fixable findings, BROKEN on an image that does not exist. On main, publish it to ghcr.io.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 4 * * 1'   # Mondays: rebuild with a fresh vulnerability database
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build the gate
+        run: docker build -t springshield:test .
+
+      - name: Expect SHIP on a current minimal image
+        run: |
+          mkdir -p reports/ship
+          docker run --rm -v "$PWD/reports/ship:/reports" springshield:test alpine:3.21
+          cat reports/ship/vulnerabilities.txt | tail -5
+
+      - name: Expect BLOCK on an old image with fixable findings
+        run: |
+          mkdir -p reports/block
+          set +e
+          docker run --rm -v "$PWD/reports/block:/reports" springshield:test nginx:1.18
+          code=$?
+          set -e
+          [ "$code" -eq 1 ] || { echo "expected exit 1 (BLOCK), got $code"; exit 1; }
+
+      - name: Expect BROKEN on an image that does not exist
+        run: |
+          mkdir -p reports/broken
+          set +e
+          docker run --rm -v "$PWD/reports/broken:/reports" springshield:test ghcr.io/quietflare/does-not-exist:0
+          code=$?
+          set -e
+          [ "$code" -eq 2 ] || { echo "expected exit 2 (BROKEN), got $code"; exit 1; }
+
+      - name: Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reports-${{ github.run_id }}
+          path: reports/
+
+      - name: Registry login
+        if: github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish as :1 and :main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          docker tag springshield:test ghcr.io/quietflare/springshield:1
+          docker tag springshield:test ghcr.io/quietflare/springshield:main
+          docker push ghcr.io/quietflare/springshield:1
+          docker push ghcr.io/quietflare/springshield:main
