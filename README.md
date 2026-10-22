@@ -36,7 +36,7 @@ Every check in springshield asserts that it did the work before it reports a res
 | malware | known malicious files, ClamAV | any |
 | signature and provenance | sign the image by digest, attach the SBOM and a provenance statement | on request, after the other checks pass |
 
-The first three are in today. The rest arrive in order over the week.
+The first six run in the gate. Signing stays in the pipeline for now, because keyless signing uses the pipeline's own identity; see the example.
 
 ## The policy
 

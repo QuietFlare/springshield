@@ -9,6 +9,12 @@ block:
   # A finding with no fix available is reported, not blocked: there is nothing to do about it yet.
   ignore_unfixed: true
 
+licences:
+  # Trivy sorts every licence into a category: forbidden, restricted, reciprocal, notice,
+  # permissive, unencumbered, unknown. Only the categories listed here block; the rest are
+  # reported in licences.txt for a person to read.
+  forbid: [forbidden]
+
 # Findings judged not to apply, with the reason written down. "Not affected, and why."
 accepted: []
 #  - id: CVE-2026-111943
