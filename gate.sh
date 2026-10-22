@@ -46,9 +46,11 @@ while IFS=$'\t' read -r id until; do
 done < <(yq -r '.accepted[]? | [.id, (.until // "")] | @tsv' "$POLICY")
 
 blocked=0; broken=0
-pass()  { printf '  %-18s pass   %s\n' "$1" "$2"; }
-block() { printf '  %-18s BLOCK  %s\n' "$1" "$2"; blocked=1; }
-broke() { printf '  %-18s BROKEN %s\n' "$1" "$2"; broken=1; }
+RESULTS="$WORK/results.tsv"; : > "$RESULTS"
+record() { printf '%s\t%s\t%s\n' "$1" "$2" "$3" >> "$RESULTS"; }
+pass()  { printf '  %-18s pass   %s\n' "$1" "$2"; record "$1" pass "$2"; }
+block() { printf '  %-18s BLOCK  %s\n' "$1" "$2"; record "$1" block "$2"; blocked=1; }
+broke() { printf '  %-18s BROKEN %s\n' "$1" "$2"; record "$1" broken "$2"; broken=1; }
 count() { jq "$2" "$1" 2>/dev/null || echo 0; }
 
 echo "springshield on $TARGET"
@@ -153,8 +155,32 @@ check_sbom
 check_licences
 check_malware
 
+if [ "$broken" -eq 1 ]; then verdict=BROKEN; code=2
+elif [ "$blocked" -eq 1 ]; then verdict=BLOCKED; code=1
+else verdict=SHIP; code=0; fi
+
+# The verdict as a file: what was judged, by which gate with which databases, under which policy,
+# and what each check said. This is what a cluster policy or a release page reads.
+digest=$(jq -r '.Metadata.RepoDigests[0]? // .Metadata.ImageID // ""' "$REPORTS/vulnerabilities.json" 2>/dev/null || echo "")
+trivy_db=$(trivy version --format json 2>/dev/null | jq -r '.VulnerabilityDB.UpdatedAt // ""' || echo "")
+clamav_db=$(clamscan --version 2>/dev/null || echo "")
+policy_sha=$(sha256sum "$POLICY" | cut -c1-64)
+jq -n \
+  --arg target "$TARGET" --arg digest "$digest" --arg verdict "$verdict" \
+  --arg gate "${SPRINGSHIELD_VERSION:-dev}" --arg trivy_db "$trivy_db" --arg clamav_db "$clamav_db" \
+  --arg policy "$POLICY" --arg policy_sha "$policy_sha" --arg at "$(date -u +%FT%TZ)" \
+  --rawfile results "$RESULTS" \
+  '{target: $target, digest: $digest, verdict: $verdict, judged_at: $at,
+    gate: {version: $gate, vulnerability_db: $trivy_db, clamav: $clamav_db},
+    policy: {path: $policy, sha256: $policy_sha},
+    checks: ($results | split("\n") | map(select(length > 0) | split("\t") | {name: .[0], result: .[1], detail: .[2]}))}' \
+  > "$REPORTS/verdict.json"
+
 rm -rf "$WORK"
 echo
-if [ "$broken" -eq 1 ]; then echo "verdict: BROKEN, a check could not run; nothing may ship on a check that did not happen"; exit 2; fi
-if [ "$blocked" -eq 1 ]; then echo "verdict: BLOCKED, fix or accept in the policy with a reason and a date"; exit 1; fi
-echo "verdict: SHIP"
+case "$verdict" in
+  BROKEN)  echo "verdict: BROKEN, a check could not run; nothing may ship on a check that did not happen" ;;
+  BLOCKED) echo "verdict: BLOCKED, fix or accept in the policy with a reason and a date" ;;
+  SHIP)    echo "verdict: SHIP" ;;
+esac
+exit "$code"

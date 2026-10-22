@@ -6,11 +6,17 @@ One command, the same on a laptop and in CI, on the image you just built and hav
 
 ```bash
 docker save app:1.4.0 -o image.tar
-docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/image.tar:/image.tar:ro" -v "$PWD/reports:/reports" \
-  ghcr.io/quietflare/springshield:1 /image.tar
+docker run --rm --user "$(id -u):$(id -g)" \
+  -v "$PWD/image.tar:/image.tar:ro" \
+  -v "$PWD/Dockerfile:/Dockerfile:ro" \
+  -v "$PWD/gate.yaml:/gate.yaml:ro" \
+  -v "$PWD/reports:/reports" \
+  ghcr.io/quietflare/springshield:1 /image.tar --dockerfile /Dockerfile --policy /gate.yaml
 ```
 
-It runs every check, writes one report per check into `reports/`, and prints one verdict line. The exit code is zero only when the image may ship; the push comes after, never before.
+The app hands over three things: the image as a tar, its Dockerfile for the misconfiguration check, and its `gate.yaml`, the policy that says what blocks and which findings are accepted and why. Without `--policy` the built-in default applies: HIGH and CRITICAL block, nothing is accepted.
+
+The gate runs every check, writes one report per check into `reports/`, and prints one verdict line. The exit code is zero only when the image may ship; the push comes after, never before.
 
 The same command with a registry reference instead of a tar audits an image that is already out there, yours from last month or a vendor's:
 
@@ -37,6 +43,14 @@ Every check in springshield asserts that it did the work before it reports a res
 | signature and provenance | sign the image by digest, attach the SBOM and a provenance statement | on request, after the other checks pass |
 
 The first six run in the gate. Signing stays in the pipeline for now, because keyless signing uses the pipeline's own identity; see the example.
+
+## The verdict
+
+Besides the exit code, every run writes `reports/verdict.json`: the image digest, the verdict, the gate's version and the dates of its databases, the policy's hash, and each check's result with its detail. That file is what a release page shows and what a cluster admission policy reads.
+
+## Versions
+
+A release is a tag, `v1.0.0`, and an image, `ghcr.io/quietflare/springshield:1.0.0-20261022`. The dated tag never moves. Every Monday the newest release is rebuilt with fresh databases under a new date, and the floating tags `:1.0.0`, `:1.0` and `:1` move to it. Pin the dated tag when a verdict must be reproducible; use `:1` when you want the newest databases.
 
 ## The policy
 

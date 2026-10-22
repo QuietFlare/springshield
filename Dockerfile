@@ -26,7 +26,9 @@ COPY --from=crane /usr/local/bin/crane /usr/local/bin/crane
 COPY gate.sh /usr/local/bin/gate
 COPY gate.yaml /etc/springshield/gate.yaml
 RUN chmod +x /usr/local/bin/gate
-ENV TRIVY_CACHE_DIR=/cache HOME=/tmp
+# The version and build date, written into every verdict so a report says which gate judged it.
+ARG VERSION=dev
+ENV SPRINGSHIELD_VERSION=${VERSION} TRIVY_CACHE_DIR=/cache HOME=/tmp
 # The databases, fetched once at build time by root. The vulnerability database refreshes itself
 # on a run with network; the ClamAV database is refreshed by the weekly rebuild.
 RUN trivy image --download-db-only --cache-dir /cache >/dev/null 2>&1 && chmod -R a+rwX /cache
