@@ -2,7 +2,10 @@
 
 The release gate for Spring Boot images. It runs on any container image; Boot is where it knows the most.
 
-Current release: [1.0.0](https://github.com/QuietFlare/springshield/releases/tag/v1.0.0), as the image [`ghcr.io/quietflare/springshield`](https://github.com/QuietFlare/springshield/pkgs/container/springshield) with the tags `1.0.0-20261022`, `1.0.0`, `1.0` and `1`. The commands below use `:1`, the newest 1.x with the newest databases; pin `1.0.0-20261022` when a verdict must be reproducible.
+[![release](https://img.shields.io/github/v/release/QuietFlare/springshield?label=release)](https://github.com/QuietFlare/springshield/releases/latest)
+[![image](https://img.shields.io/badge/ghcr.io-quietflare%2Fspringshield-blue)](https://github.com/QuietFlare/springshield/pkgs/container/springshield)
+[![ci](https://github.com/QuietFlare/springshield/actions/workflows/ci.yml/badge.svg)](https://github.com/QuietFlare/springshield/actions/workflows/ci.yml)
+[![licence](https://img.shields.io/github/license/QuietFlare/springshield)](LICENSE)
 
 One command, the same on a laptop and in CI, on the image you just built and have not pushed:
 
