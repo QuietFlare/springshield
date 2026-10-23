@@ -46,9 +46,12 @@ Every check in springshield asserts that it did the work before it reports a res
 | SBOM | what exactly is in the image, as CycloneDX | never, the file is the result |
 | licences | which licences the contents carry | only those the policy forbids |
 | malware | known malicious files, ClamAV | any |
+| boot-profile | is a development profile active, in the jar, the ENV or the command line | any profile named in the policy's `dev_profiles` |
+| boot-actuator | are Actuator endpoints beyond health and info exposed with no Spring Security in the image | yes |
+| boot-layers | is the application one fat jar, re-shipped whole on every build | only if the policy says so; reported otherwise |
 | signature and provenance | sign the image by digest, attach the SBOM and a provenance statement | on request, after the other checks pass |
 
-The first six run in the gate. Signing stays in the pipeline for now, because keyless signing uses the pipeline's own identity; see the example.
+The first nine run in the gate. Signing stays in the pipeline for now, because keyless signing uses the pipeline's own identity; see the example.
 
 ## The verdict
 
@@ -67,15 +70,25 @@ version: 1
 block:
   severity: [HIGH, CRITICAL]
   ignore_unfixed: true
+boot:
+  block: [actuator, dev-profile]
+  dev_profiles: [dev, development, local, test, debug]
 accepted:
   - id: CVE-2026-111943
     reason: helper binary runs once at start, opens no socket
     until: 2026-12-31
+  - id: BOOT-UNLAYERED
+    reason: image is built once a month, the layer saving is not worth the Dockerfile
+    until: 2027-03-31
 ```
 
 ## Spring Boot
 
-The first worked example is a Spring Boot image built from a layered jar on a Temurin base, in `examples/aurae`. The Boot-specific checks, an Actuator exposed without authentication, a dev profile baked into the jar, a jar not split into layers, come after the generic ones.
+The gate finds the application whether it is one fat jar or exploded on disk, as `layertools extract` and buildpacks leave it, and reads its `application` files, the names of its dependencies, and the image's ENV and command line. Three checks follow, and each says "not a Spring Boot image" when there is nothing to judge.
+
+A development profile active anywhere, `spring.profiles.active` in the jar, `SPRING_PROFILES_ACTIVE` in the ENV, `-Dspring.profiles.active` on the command line, blocks: the image would start as a dev build. Actuator endpoints beyond `health` and `info` exposed over HTTP block when Spring Security is not in the image; when it is, the gate reports the exposure and says it cannot read the filter chain. One fat jar is reported, not blocked, unless the policy lists `unlayered`; it means every build re-ships every dependency. Each finding has an id, `BOOT-DEV-PROFILE`, `BOOT-ACTUATOR`, `BOOT-UNLAYERED`, and is accepted like a CVE, with a reason and a date.
+
+The first worked example is a Spring Boot image built from a layered jar on a Temurin base, in `examples/aurae`.
 
 ## Why not a buildpack or a scanner action
 

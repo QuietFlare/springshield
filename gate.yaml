@@ -20,3 +20,13 @@ accepted: []
 #  - id: CVE-2026-111943
 #    reason: helper binary runs once at container start and opens no socket
 #    until: 2026-12-31
+
+boot:
+  # The Spring Boot checks run when the image holds a Boot application and say so when it does
+  # not. Which of their findings block: actuator (endpoints beyond health and info exposed with no
+  # Spring Security), dev-profile (a development profile active). unlayered (one fat jar) is
+  # reported unless listed here. Accept a finding by its id, BOOT-ACTUATOR, BOOT-DEV-PROFILE,
+  # BOOT-UNLAYERED, under accepted with a reason and a date, like a CVE.
+  block: [actuator, dev-profile]
+  # Profile names that mean "not production" when active.
+  dev_profiles: [dev, development, local, test, debug]

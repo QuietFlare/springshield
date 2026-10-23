@@ -79,6 +79,28 @@ jobs:
           set -e
           [ "$code" -eq 2 ] || { echo "expected exit 2 (BROKEN), got $code"; exit 1; }
 
+      - name: Expect BLOCK on a Spring Boot image with a dev profile and an open Actuator
+        # tests/boot/build.sh writes two Boot images as tars: one wrong in every way the Boot
+        # checks know, one right.
+        run: |
+          tests/boot/build.sh fixtures
+          mkdir -p reports/boot-bad
+          set +e
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/fixtures/boot-bad.tar:/image.tar:ro" -v "$PWD/reports/boot-bad:/reports" springshield:test /image.tar
+          code=$?
+          set -e
+          [ "$code" -eq 1 ] || { echo "expected exit 1 (BLOCK), got $code"; exit 1; }
+          for c in boot-profile boot-actuator; do
+            [ "$(jq -r --arg c "$c" '.checks[] | select(.name == $c) | .result' reports/boot-bad/verdict.json)" = "block" ] || { echo "expected $c to block"; exit 1; }
+          done
+          [ "$(jq -r '.checks[] | select(.name == "boot-layers") | .result' reports/boot-bad/verdict.json)" = "pass" ]
+
+      - name: Expect SHIP on a Spring Boot image done right
+        run: |
+          mkdir -p reports/boot-good
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD/fixtures/boot-good.tar:/image.tar:ro" -v "$PWD/reports/boot-good:/reports" springshield:test /image.tar
+          [ "$(jq -r '[.checks[] | select(.name | startswith("boot")) | .result] | unique | join(",")' reports/boot-good/verdict.json)" = "pass" ]
+
       - name: Reports
         if: always()
         uses: actions/upload-artifact@v4

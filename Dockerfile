@@ -18,7 +18,7 @@ RUN apk add --no-cache curl \
     | tar -xz -C /usr/local/bin crane
 
 FROM alpine:3.21
-RUN apk add --no-cache bash jq yq ca-certificates clamav \
+RUN apk add --no-cache bash jq yq unzip ca-certificates clamav \
  && adduser -S -u 10001 -h /home/gate gate \
  && mkdir -p /reports /cache && chmod 1777 /reports /cache /tmp
 COPY --from=trivy /usr/local/bin/trivy /usr/local/bin/trivy
