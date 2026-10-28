@@ -36,6 +36,7 @@ IGNORE_UNFIXED=$(yq -r '.block.ignore_unfixed // true' "$POLICY")
 FORBIDDEN_LICENCES=$(yq -r '(.licences.forbid // ["forbidden"]) | join(" ")' "$POLICY")
 BOOT_BLOCK=$(yq -r '(.boot.block // ["actuator", "dev-profile"]) | join(" ")' "$POLICY")
 DEV_PROFILES=$(yq -r '(.boot.dev_profiles // ["dev", "development", "local", "test", "debug"]) | join(" ")' "$POLICY")
+MAX_DB_AGE=$(yq -r '.databases.max_age_days // 7' "$POLICY")
 ACCEPTED_FILE="$WORK/accepted"
 yq -r '.accepted[]? | .id' "$POLICY" > "$ACCEPTED_FILE"
 today=$(date -u +%F)
@@ -267,6 +268,24 @@ check_boot_layers() {
   boot_finding unlayered boot-layers BOOT-UNLAYERED "one fat jar at ${BOOT_HOME#$FS}, $mb MB with $libs dependencies inside"
 }
 
+# databases: the gate's own databases are no older than the policy allows. A scan with a stale
+# database is a scan that finds nothing, so this is BROKEN, not BLOCKED. It runs last because a
+# run with network refreshes the vulnerability database during the first scan.
+check_databases() {
+  local now trivy_at clam_at trivy_days clam_days detail
+  now=$(date -u +%s)
+  trivy_at=$(trivy version --format json 2>/dev/null \
+    | jq -r '.VulnerabilityDB.UpdatedAt // "" | sub("\\.[0-9]+"; "") | if . == "" then "" else fromdateiso8601 end' 2>/dev/null || true)
+  clam_at=$(stat -c %Y /var/lib/clamav/daily.c?d 2>/dev/null | head -1 || true)
+  if [ -z "$trivy_at" ] || [ -z "$clam_at" ]; then broke databases "database dates unreadable; vulnerability '${trivy_at:-none}', ClamAV '${clam_at:-none}'"; return; fi
+  trivy_days=$(( (now - trivy_at) / 86400 )); clam_days=$(( (now - clam_at) / 86400 ))
+  detail="vulnerability database $trivy_days day(s) old, ClamAV $clam_days"
+  if [ "$MAX_DB_AGE" -le 0 ]; then pass databases "$detail; no limit set"
+  elif [ "$trivy_days" -gt "$MAX_DB_AGE" ] || [ "$clam_days" -gt "$MAX_DB_AGE" ]; then
+    broke databases "$detail, older than $MAX_DB_AGE days; pull a newer gate or run with network"
+  else pass databases "$detail, within $MAX_DB_AGE days"; fi
+}
+
 extract_image
 check_vulnerabilities
 check_secrets
@@ -278,6 +297,7 @@ boot_locate
 check_boot_profile
 check_boot_actuator
 check_boot_layers
+check_databases
 
 if [ "$broken" -eq 1 ]; then verdict=BROKEN; code=2
 elif [ "$blocked" -eq 1 ]; then verdict=BLOCKED; code=1

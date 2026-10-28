@@ -79,6 +79,18 @@ jobs:
           set -e
           [ "$code" -eq 2 ] || { echo "expected exit 2 (BROKEN), got $code"; exit 1; }
 
+      - name: Expect BROKEN on stale databases
+        # The ClamAV database is aged as root; the default policy allows seven days.
+        run: |
+          mkdir -p reports/stale
+          set +e
+          docker run --rm --user 0 -v "$PWD/reports/stale:/reports" --entrypoint bash springshield:test \
+            -c 'touch -d 2020-01-01 /var/lib/clamav/daily.c?d && gate alpine:3.21'
+          code=$?
+          set -e
+          [ "$code" -eq 2 ] || { echo "expected exit 2 (BROKEN), got $code"; exit 1; }
+          [ "$(jq -r '.checks[] | select(.name == "databases") | .result' reports/stale/verdict.json)" = "broken" ]
+
       - name: Expect BLOCK on a Spring Boot image with a dev profile and an open Actuator
         # tests/boot/build.sh writes two Boot images as tars: one wrong in every way the Boot
         # checks know, one right.

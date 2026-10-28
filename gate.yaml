@@ -21,6 +21,12 @@ accepted: []
 #    reason: helper binary runs once at container start and opens no socket
 #    until: 2026-12-31
 
+databases:
+  # The gate's own databases must be no older than this many days, or the run is BROKEN: a scan
+  # with a stale database is a scan that finds nothing. The image is rebuilt every Monday, so 7
+  # fits the floating tags. Raise it for a pinned dated tag; 0 turns the check off.
+  max_age_days: 7
+
 boot:
   # The Spring Boot checks run when the image holds a Boot application and say so when it does
   # not. Which of their findings block: actuator (endpoints beyond health and info exposed with no

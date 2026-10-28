@@ -49,9 +49,10 @@ Every check in springshield asserts that it did the work before it reports a res
 | boot-profile | is a development profile active, in the jar, the ENV or the command line | any profile named in the policy's `dev_profiles` |
 | boot-actuator | are Actuator endpoints beyond health and info exposed with no Spring Security in the image | yes |
 | boot-layers | is the application one fat jar, re-shipped whole on every build | only if the policy says so; reported otherwise |
+| databases | are the gate's own databases fresh | older than the policy's `max_age_days`, as BROKEN, not BLOCKED |
 | signature and provenance | sign the image by digest, attach the SBOM and a provenance statement | on request, after the other checks pass |
 
-The first nine run in the gate. Signing stays in the pipeline for now, because keyless signing uses the pipeline's own identity; see the example.
+The first ten run in the gate. Signing stays in the pipeline for now, because keyless signing uses the pipeline's own identity; see the example.
 
 ## The verdict
 
@@ -59,7 +60,7 @@ Besides the exit code, every run writes `reports/verdict.json`: the image digest
 
 ## Versions
 
-A release is a tag, `v1.0.0`, and an image, `ghcr.io/quietflare/springshield:1.0.0-20261022`. The dated tag never moves. Every Monday the newest release is rebuilt with fresh databases under a new date, and the floating tags `:1.0.0`, `:1.0` and `:1` move to it. Pin the dated tag when a verdict must be reproducible; use `:1` when you want the newest databases.
+A release is a tag, `v1.0.0`, and an image, `ghcr.io/quietflare/springshield:1.0.0-20261022`. The dated tag never moves. Every Monday the newest release is rebuilt with fresh databases under a new date, and the floating tags `:1.0.0`, `:1.0` and `:1` move to it. Pin the dated tag when a verdict must be reproducible; use `:1` when you want the newest databases. Either way the gate checks its own databases' age against the policy's `max_age_days`, seven by default, and reports BROKEN when they are older: a scan with a stale database is a scan that finds nothing.
 
 ## The policy
 
@@ -70,6 +71,8 @@ version: 1
 block:
   severity: [HIGH, CRITICAL]
   ignore_unfixed: true
+databases:
+  max_age_days: 7
 boot:
   block: [actuator, dev-profile]
   dev_profiles: [dev, development, local, test, debug]

@@ -11,6 +11,7 @@ The Spring Boot checks.
 - An image that is not a Spring Boot application passes the three checks with "nothing to judge".
 - The image's files and config are extracted once and shared by the malware and Boot checks.
 - Two Boot fixture images in `tests/boot`, built without Java, prove the checks in CI.
+- A `databases` check: the run is BROKEN when the vulnerability or ClamAV database is older than the policy's `databases.max_age_days`, seven by default, 0 for no limit. A scan with a stale database is a scan that finds nothing.
 
 ## 1.0.0
 
